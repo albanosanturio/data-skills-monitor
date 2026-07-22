@@ -1,2 +1,44 @@
-# data-skills-monitor
-Data pipeline tracking tech skills demand and use in data roles
+# Tech Skills Monitor
+
+## Overview & Problem
+
+Track what technical skills employers are actually demanding in data engineering, analytics engineering, and BI roles. Aggregate job postings from multiple sources, extract skill requirements, monitor Python package adoption trends, and visualize demand patterns.
+
+**Why?** As a data engineer re-entering the job market, I need to understand what skills are in demand, what tools companies are using, and how trends are shifting. This project automates that analysis.
+
+---
+
+## Architecture & Flow
+
+```
+Data Sources (Indeed, Stack Overflow Jobs)
+        ↓
+[Daily] Scrape job postings
+        ↓
+Store raw data (PostgreSQL)
+        ↓
+Extract skills from descriptions (regex + Claude API fallback)
+        ↓
+Fetch PyPI download trends for key packages
+        ↓
+Transform & normalize (dbt models)
+        ↓
+Query analytics tables
+        ↓
+Visualize in Streamlit dashboard
+```
+
+### Component Breakdown
+
+| Component | Purpose | Tech |
+|-----------|---------|------|
+| **Scraper** | Collect job postings | Python (BeautifulSoup, Playwright) |
+| **Storage** | Raw data warehouse | PostgreSQL (Supabase) |
+| **Skill Extraction** | Parse job descriptions for skills | Regex + Claude API |
+| **PyPI Tracker** | Monitor package adoption | pypistats.org API |
+| **Transform** | Clean & model data | dbt |
+| **Orchestration** | Daily automation | GitHub Actions + Airflow |
+| **Dashboard** | Interactive visualizations | Streamlit |
+
+---
+
