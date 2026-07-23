@@ -42,3 +42,12 @@ Visualize in Streamlit dashboard
 
 ---
 
+## Dependencies
+
+- `python-dotenv` — Load environment variables from .env
+- `sqlalchemy` — Database ORM for PostgreSQL
+- `requests` — HTTP client for scraping
+- `beautifulsoup4` — HTML parsing
+- `playwright` — Browser automation
+- `pandas` — Data manipulation
+
