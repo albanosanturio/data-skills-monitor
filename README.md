@@ -51,3 +51,23 @@ Visualize in Streamlit dashboard
 - `playwright` — Browser automation
 - `pandas` — Data manipulation
 
+## Possible improvements
+- Add a LLM skill extraction (this can help include new skills)
+- Assign confidence scores to skill extraction
+
+## Data Collection: Indeed Scraper
+
+### Source
+Remote data engineering/analytics roles via Indeed.com (pagination: 10 jobs/page).
+
+### MVP Scope
+- Single country (Argentina)
+- First 50 jobs (5 pages)
+- Daily scrape via GitHub Actions
+- Rate limit: 1 request/2 seconds
+
+### Data per Job
+Job title, company, location, description, URL, posted date, scraped date.
+
+### Future
+Multi-country support, date filtering, additional sources.
