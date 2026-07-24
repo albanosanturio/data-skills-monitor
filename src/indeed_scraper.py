@@ -16,7 +16,7 @@ load_dotenv()
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -25,10 +25,10 @@ logger = logging.getLogger(__name__)
 CONFIG = {
     'base_url': 'https://ar.indeed.com/jobs',
     'search_query': 'data engineer',
-    'jobs_per_page': 10,
+    'jobs_per_page': 16,
     'max_pages': 5,  # MVP: 50 jobs
-    'timeout_ms': 30000,
-    'rate_limit_seconds': 2,
+    'timeout_ms': 60000,
+    'rate_limit_seconds': 10,  # Increased from 2 to 10 seconds between pages
 }
 
 
@@ -62,8 +62,13 @@ class IndeedScraper:
 
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch()
+                browser = p.chromium.launch(
+                    headless=False,
+                    args=['--disable-blink-features=AutomationControlled']
+                )
                 page = browser.new_page()
+                # Stealth: hide automation signals
+                page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => false});")
 
                 # Scrape each page
                 for page_num in range(CONFIG['max_pages']):
@@ -98,32 +103,56 @@ class IndeedScraper:
             page: Playwright page object
             page_num: Page number (0-indexed)
         """
+        # Calculate starting position on Indeed (0, 10, 20, etc.)
         start_param = page_num * CONFIG['jobs_per_page']
+        
+        # Build the URL for this page
         url = f"{CONFIG['base_url']}?q={CONFIG['search_query']}&start={start_param}"
 
         logger.info(f"Scraping page {page_num + 1} ({start_param} jobs)...")
+        print(f"\n{'='*60}")
+        print(f"PAGE {page_num + 1} - Start position: {start_param}")
+        print(f"URL: {url}")
+        print(f"{'='*60}")
 
-        # Navigate and wait for jobs to load
+        # Navigate to the URL and wait for browser to load it
         page.goto(url, timeout=CONFIG['timeout_ms'])
+        
+        # Wait for job elements to appear (identified by data-jk attribute)
         page.wait_for_selector('[data-jk]', timeout=CONFIG['timeout_ms'])
 
-        # Extract job elements
+        # Extract all job card elements from the page
         job_elements = page.query_selector_all('[data-jk]')
         logger.debug(f"Found {len(job_elements)} job elements on page {page_num + 1}")
+        print(f"Found {len(job_elements)} job cards on page {page_num + 1}")
 
-        # Parse each job
-        for job_elem in job_elements:
+        # Loop through each job card and extract data
+        for i, job_elem in enumerate(job_elements, 1):
             try:
+                # Extract job data from the element
                 job_data = self._parse_job(job_elem)
+                
                 if job_data:
-                    self._save_job(job_data)
+                    # DEBUG: Print the job data we extracted
+                    print(f"\n  Job {i}:")
+                    print(f"    Title: {job_data['job_title']}")
+                    print(f"    URL: {job_data['job_url']}")
+                    
+                    # Try to save to database (commented out for now to see data without DB errors)
+                    # self._save_job(job_data)
                     self.jobs_scraped += 1
+                    
+                    # Small delay between jobs to be respectful
+                    import time
+                    time.sleep(0.5)
+                    
             except Exception as e:
                 logger.error(f"Error parsing job: {e}")
                 self.errors.append({'type': 'parse', 'error': str(e)})
 
-        # Rate limiting
+        # Rate limiting: wait between pages (respectful scraping)
         import time
+        print(f"\nFinished page {page_num + 1}. Waiting {CONFIG['rate_limit_seconds']}s before next page...")
         time.sleep(CONFIG['rate_limit_seconds'])
 
     def _parse_job(self, job_elem) -> Optional[Dict[str, str]]:
@@ -137,25 +166,35 @@ class IndeedScraper:
             dict with job data or None if parsing fails
         """
         try:
-            # Extract job data from element attributes and text
+            # Extract the job ID from data-jk attribute
+            # Example: data-jk="10152d1ec8f6f039"
             job_id = job_elem.get_attribute('data-jk')
+            
+            # Extract the job posting URL from href attribute
+            # Example: href="https://ar.indeed.com/rc/clk?jk=..."
             job_url = job_elem.get_attribute('href')
-            job_title_elem = job_elem.query_selector('[class*="JobTitle"]')
+            
+            # Find and extract the job title
+            # The title is inside a <span> with id attribute like "jobTitle-abc123"
+            # We use query_selector to find it: span[id*="jobTitle"] means "span with id containing 'jobTitle'"
+            job_title_elem = job_elem.query_selector('span[id*="jobTitle"]')
             job_title = job_title_elem.text_content() if job_title_elem else "Unknown"
 
-            # TODO: Extract company, location, description from page
-            # This requires inspecting Indeed's HTML structure more deeply
+            # TODO: Extract company name and description from job detail page
+            # For now, we only scrape from the listing page (title + URL)
+            # Company name requires visiting each job's detail page
 
+            # Build a dictionary with all job information we've extracted
             job_data = {
                 'source': 'indeed',
                 'job_id': job_id,
                 'job_title': job_title,
                 'job_url': job_url,
-                'company_name': 'TBD',  # Placeholder
-                'location': 'Argentina',  # Default from ar.indeed.com
-                'job_description': 'TBD',  # Placeholder
+                'company_name': 'TBD',  # TODO: extract from job detail page
+                'location': 'Argentina',  # All jobs from ar.indeed.com are Argentina-based
+                'job_description': 'TBD',  # TODO: extract from job detail page
                 'posted_date': None,
-                'job_type': None,  # To be extracted from job page
+                'job_type': None,
                 'scraped_date': datetime.now().date(),
             }
             return job_data

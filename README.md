@@ -55,7 +55,26 @@ Visualize in Streamlit dashboard
 - Add a LLM skill extraction (this can help include new skills)
 - Assign confidence scores to skill extraction
 
-## Data Collection: Indeed Scraper
+## Data Collection: Indeed Scraper Implementation
+
+### Architecture
+The scraper uses Playwright to automate browser navigation and BeautifulSoup-style DOM querying to extract job data from Indeed.com listing pages.
+
+### Key Components
+- `IndeedScraper` class: Main scraper logic
+- `_scrape_page()`: Handles pagination (navigates each page URL)
+- `_parse_job()`: Extracts title and URL from each job card
+
+### Playwright Methods Used
+- `.goto()` — Navigate to Indeed page
+- `.wait_for_selector()` — Wait for jobs to load
+- `.query_selector_all()` — Find all job cards
+- `.get_attribute()` / `.text_content()` — Extract job data
+
+### Anti-Scraping Considerations
+- **Headless=False**: Required (headless mode gets blocked)
+- **Rate limiting**: 10s delay between pages, 0.5s between jobs
+- **Stealth mode**: Hide automation signals from Indeed
 
 ### Source
 Remote data engineering/analytics roles via Indeed.com (pagination: 10 jobs/page).
@@ -71,3 +90,10 @@ Job title, company, location, description, URL, posted date, scraped date.
 
 ### Future
 Multi-country support, date filtering, additional sources.
+
+### TODO: Next Phase
+- [ ] Test and fix Supabase database connection
+- [ ] Uncomment _save_job() to store jobs in database
+- [ ] Scrape job detail pages to extract description
+- [ ] Extract skills from descriptions via regex
+- [ ] Store skills in job_skills table
