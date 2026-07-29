@@ -62,8 +62,9 @@ The scraper uses Playwright to automate browser navigation and BeautifulSoup-sty
 
 Note on changes 29/07, decoupled scraping script:
 
-- `indeed_scraper.py` → extracts job data, saves raw JSON to `data/raw/`
-- `populate_db.py` → reads JSON, validates, inserts to Supabase
+- `scrape_job_listings` → extracts jobs listings and saves links, saves raw JSON to `data/raw/`
+- `fetch_job_details.py` → goes through links and retrieves raw html `data/html_raw/`
+- `load_jobs_database.py` → reads HTML, validates, inserts jobs to Supabase
 
 **Why**: Scraper failures don't corrupt DB. Raw data preserved for auditing. Schema changes don't require re-scraping.
 
