@@ -60,6 +60,13 @@ Visualize in Streamlit dashboard
 ### Architecture
 The scraper uses Playwright to automate browser navigation and BeautifulSoup-style DOM querying to extract job data from Indeed.com listing pages.
 
+Note on changes 29/07, decoupled scraping script:
+
+- `indeed_scraper.py` → extracts job data, saves raw JSON to `data/raw/`
+- `populate_db.py` → reads JSON, validates, inserts to Supabase
+
+**Why**: Scraper failures don't corrupt DB. Raw data preserved for auditing. Schema changes don't require re-scraping.
+
 ### Key Components
 - `IndeedScraper` class: Main scraper logic
 - `_scrape_page()`: Handles pagination (navigates each page URL)

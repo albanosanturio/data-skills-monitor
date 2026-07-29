@@ -222,3 +222,4 @@ __marimo__/
 # Project specific dirs to ignore
 scratch/
 outputs/
+test_data/
