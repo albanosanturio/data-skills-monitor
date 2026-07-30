@@ -79,6 +79,10 @@ Note on changes 29/07, decoupled scraping script:
 - `.query_selector_all()` — Find all job cards
 - `.get_attribute()` / `.text_content()` — Extract job data
 
+### Supabase connection
+- Changed to a pooler IPV4 connection, ipv6 was blocked
+- currently testing fetch and insert
+
 ### Anti-Scraping Considerations
 - **Headless=False**: Required (headless mode gets blocked)
 - **Rate limiting**: 10s delay between pages, 0.5s between jobs
