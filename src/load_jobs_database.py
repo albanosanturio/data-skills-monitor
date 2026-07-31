@@ -3,6 +3,7 @@
 
 import logging
 from datetime import datetime
+from bs4 import BeautifulSoup
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -21,9 +22,63 @@ def read_file(filepath):
         return None
 
 
-def parse_html(html):
-    """Parse HTML and extract job data"""
-    pass
+def read_parse_html(filepath):
+    """Read HTML file and extract job data
+    
+    Args:
+        filepath: Path to HTML file (e.g., Path('data/raw_html/jobs_2026-07-30/job_2e13383963c495ed.html'))
+    
+    Returns:
+        dict: Job data with fields: source, job_title, company_name, location, job_url, job_description, posted_date, job_type
+    """
+    try:
+        # Read file
+        with open(filepath, 'r', encoding='utf-8') as f:
+            html = f.read()
+        
+        logger.info(f"Read: {filepath.name}")
+        
+        # Extract job_id from filename for URL
+        job_id = filepath.name.replace('job_', '').replace('.html', '')
+        job_url = f"https://ar.indeed.com/viewjob?jk={job_id}"
+        
+        # Parse HTML
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Find description
+        desc_tag = soup.find('div', id='jobDescriptionText')
+        desc = desc_tag.get_text(strip=True) if desc_tag else None
+ 
+        # Find title
+        title_tag = soup.find('h1')
+        title = title_tag.get_text(strip=True) if title_tag else None
+ 
+        # Find company (in meta or header)
+        company_elem = soup.find('a', {'data-company-name': 'true'})
+        company = company_elem.text.strip() if company_elem else None
+ 
+        # Find location
+        location_elem = soup.find('div', {'data-testid': 'inlineHeader-companyLocation'})
+        location = location_elem.text.strip() if location_elem else None
+ 
+        job_data = {
+            'source': 'indeed',
+            'job_title': title,
+            'company_name': company,
+            'location': location,
+            'job_url': job_url,
+            'job_description': desc,
+            'posted_date': None,
+            'job_type': None,
+        }
+ 
+        logger.info(f"Parsed: {title} at {company}")
+        print(job_data)
+        return job_data
+ 
+    except Exception as e:
+        logger.error(f"Error parsing HTML {filepath.name}: {e}")
+        return None
 
 
 def insert_to_db(job_data):
