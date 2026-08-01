@@ -1,6 +1,4 @@
-
-#TEMPLATE
-
+#imports
 import logging
 import os
 from datetime import datetime
@@ -14,11 +12,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 raw_files_path = 'test_data/raw_html/'
+raw_dir = Path(raw_files_path)
 processed_files_path = 'test_data/processed_html/'
 processed_dir = Path(processed_files_path)
 
+#db connection
+#load_dotenv()
+#db_url = os.getenv("DATABASE_URL")
+
 def read_file(filepath):
     """Read HTML file and return content"""
+    """Deprecated and integrated in read_parse_html()"""
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             html = f.read()
@@ -88,10 +92,11 @@ def read_parse_html(filepath):
         return None
 
 
-def insert_to_db(jobs_list,db_url):
-    print(f"URL: {db_url}")
-    print(f"Type: {type(db_url)}")
+def insert_to_db(jobs_list):
+    load_dotenv()
     db_url = os.getenv("DATABASE_URL")
+    print(f"URL: {db_url}")
+
     engine = create_engine(db_url)
     print(f" Engine created: {engine}")
 
@@ -149,8 +154,19 @@ def process_job_html(filepath):
 
 
 if __name__ == "__main__":
-    for file in get_html_files():
-        process_job_html(file)
+    raw_dir = Path(raw_files_path)
+    html_files = list(raw_dir.glob("*.html"))
+    #db_url = os.getenv("DATABASE_URL")
+    
+    jobs_dict_list = []
+    for filepath in html_files:
+        job_data = read_parse_html(filepath)
+        if job_data:
+            jobs_dict_list.append(job_data)
+    insert_to_db(jobs_dict_list)
+    move_to_processed(html_files)
+    
+    logger.info("Pipeline complete!")
 
 # Main loop
 # for file in get_html_files():
