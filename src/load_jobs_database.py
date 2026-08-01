@@ -2,7 +2,9 @@
 #TEMPLATE
 
 import logging
+import os
 from datetime import datetime
+from pathlib import Path
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 raw_files_path = 'test_data/raw_html/'
 processed_files_path = 'test_data/processed_html/'
+processed_dir = Path(processed_files_path)
 
 def read_file(filepath):
     """Read HTML file and return content"""
@@ -85,7 +88,7 @@ def read_parse_html(filepath):
         return None
 
 
-def insert_to_db(jobs_list):
+def insert_to_db(jobs_list,db_url):
     print(f"URL: {db_url}")
     print(f"Type: {type(db_url)}")
     db_url = os.getenv("DATABASE_URL")
@@ -111,7 +114,19 @@ def insert_to_db(jobs_list):
         logger.error(f"Error inserting to DB: {e}")
 
 
-def move_to_processed(filepath):
+def move_to_processed(html_files):
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    processed_dir = Path(processed_files_path) / timestamp
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        for filepath in html_files:
+            dest = processed_dir / filepath.name
+            filepath.rename(dest)
+            logger.info(f"Moved: {filepath.name} → processed/")
+        
+        logger.info(f"Moved {len(html_files)} files to processed")
+    except Exception as e:
+        logger.error(f"Error moving files: {e}")
     """Move file to processed folder"""
     pass
 
@@ -124,8 +139,7 @@ def get_html_files():
 def process_job_html(filepath):
     """Parse HTML, extract data, insert to DB"""
     try:
-        html = read_file(filepath)
-        job_data = parse_html(html)
+        job_data = read_parse_html(filepath)
         insert_to_db(job_data)
         move_to_processed(filepath)
         return True
