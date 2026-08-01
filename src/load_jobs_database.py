@@ -4,11 +4,15 @@
 import logging
 from datetime import datetime
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+raw_files_path = 'test_data/raw_html/'
+processed_files_path = 'test_data/processed_html/'
 
 def read_file(filepath):
     """Read HTML file and return content"""
@@ -40,7 +44,7 @@ def read_parse_html(filepath):
         
         # Extract job_id from filename for URL
         job_id = filepath.name.replace('job_', '').replace('.html', '')
-        job_url = f"https://ar.indeed.com/viewjob?jk={job_id}"
+        job_url = f"https://indeed.com/viewjob?jk={job_id}"
         
         # Parse HTML
         soup = BeautifulSoup(html, 'html.parser')
@@ -81,9 +85,30 @@ def read_parse_html(filepath):
         return None
 
 
-def insert_to_db(job_data):
-    """Insert job to database"""
-    pass
+def insert_to_db(jobs_list):
+    print(f"URL: {db_url}")
+    print(f"Type: {type(db_url)}")
+    db_url = os.getenv("DATABASE_URL")
+    engine = create_engine(db_url)
+    print(f" Engine created: {engine}")
+
+    try:
+        print("Attempting to connect...")
+        with engine.connect() as conn:
+            for job in jobs_list:
+                insert_sql = text("""
+                    INSERT INTO jobs (source, job_title, company_name, location, job_url, job_description, scraped_date)
+                    VALUES (:source, :job_title, :company_name, :location, :job_url, :job_description, :scraped_date)
+                    ON CONFLICT (job_url) DO NOTHING
+                """)
+                job['scraped_date'] = datetime.now().date()
+                conn.execute(insert_sql, job)
+
+            conn.commit()
+            logger.info(f"Inserted {len(jobs_list)} jobs")
+
+    except Exception as e:
+        logger.error(f"Error inserting to DB: {e}")
 
 
 def move_to_processed(filepath):
