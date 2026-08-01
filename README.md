@@ -2,7 +2,7 @@
 
 ## Overview & Problem
 
-Track what technical skills employers are actually demanding in data engineering, analytics engineering, and BI roles. Aggregate job postings from multiple sources, extract skill requirements, monitor Python package adoption trends, and visualize demand patterns.
+Track what technical skills employers are actually demanding in data engineering, analytics engineering, and BI roles. Aggregate job postings initially from indeed but extensible to multiple sources, extract skill requirements, and visualize demand patterns.
 
 **Why?** As a data engineer re-entering the job market, I need to understand what skills are in demand, what tools companies are using, and how trends are shifting. This project automates that analysis.
 
@@ -11,17 +11,13 @@ Track what technical skills employers are actually demanding in data engineering
 ## Architecture & Flow
 
 ```
-Data Sources (Indeed, Stack Overflow Jobs)
+Data Sources (Indeed, others)
         ↓
-[Daily] Scrape job postings
+[Daily / Weekly] Scrape job postings
         ↓
-Store raw data (PostgreSQL)
+Store raw data (PostgreSQL-Supabase)
         ↓
 Extract skills from descriptions (regex + Claude API fallback)
-        ↓
-Fetch PyPI download trends for key packages
-        ↓
-Transform & normalize (dbt models)
         ↓
 Query analytics tables
         ↓
@@ -34,7 +30,7 @@ Visualize in Streamlit dashboard
 |-----------|---------|------|
 | **Scraper** | Collect job postings | Python (BeautifulSoup, Playwright) |
 | **Storage** | Raw data warehouse | PostgreSQL (Supabase) |
-| **Skill Extraction** | Parse job descriptions for skills | Regex + Claude API |
+| **Skill Extraction** | Parse job descriptions for skills | Regex |
 | **PyPI Tracker** | Monitor package adoption | pypistats.org API |
 | **Transform** | Clean & model data | dbt |
 | **Orchestration** | Daily automation | GitHub Actions + Airflow |
@@ -54,6 +50,7 @@ Visualize in Streamlit dashboard
 ## Possible improvements
 - Add a LLM skill extraction (this can help include new skills)
 - Assign confidence scores to skill extraction
+- Add new job posting sources
 
 ## Data Collection: Indeed Scraper Implementation
 
@@ -81,7 +78,6 @@ Note on changes 29/07, decoupled scraping script:
 
 ### Supabase connection
 - Changed to a pooler IPV4 connection, ipv6 was blocked
-- currently testing fetch and insert
 
 ### Anti-Scraping Considerations
 - **Headless=False**: Required (headless mode gets blocked)
@@ -89,23 +85,22 @@ Note on changes 29/07, decoupled scraping script:
 - **Stealth mode**: Hide automation signals from Indeed
 
 ### Source
-Remote data engineering/analytics roles via Indeed.com (pagination: 10 jobs/page).
+Remote data engineering/analytics roles via Indeed.com (pagination: 16 jobs/page).
 
 ### MVP Scope
 - Single country (Argentina)
-- First 50 jobs (5 pages)
-- Daily scrape via GitHub Actions
+- First 80 jobs (5 pages)
+- Daily/Weekly scrape via GitHub Actions
 - Rate limit: 1 request/2 seconds
 
 ### Data per Job
 Job title, company, location, description, URL, posted date, scraped date.
+Mandatory: title, description, url, scraped date. The rest can be implemented later on
 
 ### Future
 Multi-country support, date filtering, additional sources.
 
 ### TODO: Next Phase
-- [ ] Test and fix Supabase database connection
-- [ ] Uncomment _save_job() to store jobs in database
-- [ ] Scrape job detail pages to extract description
 - [ ] Extract skills from descriptions via regex
 - [ ] Store skills in job_skills table
+- [ ] Streamlit webapp
