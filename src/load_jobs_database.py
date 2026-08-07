@@ -1,4 +1,6 @@
 #imports
+import re
+import json
 import logging
 import os
 from datetime import datetime
@@ -89,6 +91,96 @@ def read_parse_html(filepath):
  
     except Exception as e:
         logger.error(f"Error parsing HTML {filepath.name}: {e}")
+        return None
+
+def read_parse_html2(filepath):
+    """Read HTML file and extract job data from JSON-LD
+    
+    Args:
+        filepath: Path to HTML file
+    
+    Returns:
+        dict: Job data with all extracted fields
+    """
+    try:
+        # Read file
+        with open(filepath, 'r', encoding='utf-8') as f:
+            html = f.read()
+        
+        logger.info(f"Read: {filepath.name}")
+        
+        # Extract JSON-LD (more reliable than DOM parsing)
+        json_ld_match = re.search(r'<script type="application/ld\+json">({.*?})</script>', html, re.DOTALL)
+        
+        if not json_ld_match:
+            logger.error(f"No JSON-LD found in {filepath.name}")
+            return None
+        
+        # Parse JSON-LD
+        try:
+            job_json = json.loads(json_ld_match.group(1))
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON-LD in {filepath.name}: {e}")
+            return None
+        
+        # Extract country from URL or address
+        country = job_json.get('jobLocation', {}).get('address', {}).get('addressCountry')
+        
+        # Extract posted date
+        posted_date_str = job_json.get('datePosted')
+        posted_date = None
+        if posted_date_str:
+            try:
+                posted_date = datetime.fromisoformat(posted_date_str.replace('Z', '+00:00')).isoformat()
+            except:
+                posted_date = posted_date_str
+        
+        # Build job_url with country if available
+        job_id = filepath.name.replace('job_', '').replace('.html', '')
+
+        # Extract job_id from filename (handle both formats)
+        filename = filepath.name.replace('.html', '')
+
+
+        # Try to extract 'jk' parameter if it's a SingleFile URL-encoded filename
+        jk_match = re.search(r'jk=([a-f0-9]+)', filename)
+        if jk_match:
+            job_id = jk_match.group(1)
+        else:
+            # Fallback for old format (job_XXXXX)
+            job_id = filename.replace('job_', '')
+
+        if country:
+            job_url = f"https://{country.lower()}.indeed.com/viewjob?jk={job_id}"
+        else:
+            job_url = f"https://indeed.com/viewjob?jk={job_id}"
+        
+        # Parse description (unescape HTML entities)
+        description_html = job_json.get('description', '')
+        # Clean HTML
+        if description_html:
+            soup = BeautifulSoup(description_html, 'html.parser')
+            description_text = soup.get_text(separator=' ', strip=True)
+        else:
+            description_text = None
+            #description_text = job_json.get('description')  # Use text field if available
+        
+        job_data = {
+            'source': 'indeed',
+            'job_id': job_id,
+            'country': country,
+            'job_title': job_json.get('title'),
+            'company_name': job_json.get('hiringOrganization', {}).get('name'),
+            'job_url': job_url,
+            'job_description': description_text,
+            'posted_date': posted_date,
+        }
+        
+        logger.info(f"Parsed: {job_data['job_title']} at {job_data['company_name']} ({country})")
+        return job_data
+    
+    except Exception as e:
+        logger.error(f"Error parsing {filepath.name}: {e}")
         return None
 
 
