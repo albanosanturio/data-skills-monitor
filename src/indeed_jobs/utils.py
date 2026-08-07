@@ -118,20 +118,40 @@ def read_parse_folder(folder_path):
     html_files_list = list(folder_path.glob("*.html"))
     jobs_dict_list = []  # init an empty list to store results before saving
     seen_job_ids = set() # this set helps track duplicates
+    duplicates = 0
+    failed = 0
 
     for single_html_path in html_files_list:
-        job_data = read_parse_html_file(single_html_path)
-        if job_data:
-            job_id = job_data['job_id']
-            # Skip if already seen
-            if job_id in seen_job_ids:
+        try:
+            job_data = read_parse_html_file(single_html_path)
+
+            if not job_data:
+                failed +=1
                 logger.warning(f"Duplicate job_id: {job_id} (skipping {single_html_path.name})")
                 continue
 
-            seen_job_ids.add(job_id)
-            jobs_dict_list.append(job_data)
 
-    return jobs_dict_list, len(html_files_list), len(seen_job_ids)
+            if job_data:
+                job_id = job_data['job_id']
+
+                # Skip if already seen
+                if job_id in seen_job_ids:
+                    duplicates +=1
+                    continue
+
+                seen_job_ids.add(job_id)
+                jobs_dict_list.append(job_data)
+
+        except Exception as e:
+            failed += 1
+            logger.error(f"Failed to parse {single_html_path.name}: {e}")
+           
+    print("# of htmls processed: ", len(html_files_list))
+    print("# of jobs saved in json: ",len(jobs_dict_list))
+    print("# of repeated jobs: ", duplicates)
+    print("# of failed jobs: ", failed)
+        
+    return jobs_dict_list
 
 
 def insert_to_db(jobs_list):
@@ -186,8 +206,10 @@ def move_to_processed(folder_path, timestamp):
     logger.info(f"Moved {moved}/{len(html_files_list)} files to {processed_dir}")
     if failed:
         logger.warning(f"Failed to move: {failed}")
-    
-    return moved, failed
+
+    print("moved ",moved," files")
+    print("failed to move ",len(failed)," files")
+    return None
 
 
 

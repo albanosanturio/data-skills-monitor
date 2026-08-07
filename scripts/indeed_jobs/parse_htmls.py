@@ -26,39 +26,11 @@ logger = logging.getLogger(__name__)
 
 
 # Declare file paths to use
-raw_files_path = 'html_manual/'
-raw_dir = Path(raw_files_path)
-processed_files_path = 'test_data/processed_html/'
-processed_dir = Path(processed_files_path)
+raw_dir = Path('data/raw/')
+processed_dir = Path('test_data/processed_html/')
 
-
-jobs_dict_list = []  # init an empty list to store results before saving
-seen_job_ids = set() # this set helps track duplicates
-
-# Read and parse all the files in html_files path, and append to list
-
-
-# for filepath in html_files:
-#     job_data = read_parse_html_file(filepath)
-#     if job_data:
-#         job_id = job_data['job_id']
-#         # Skip if already seen
-#         if job_id in seen_job_ids:
-#             logger.warning(f"Duplicate job_id: {job_id} (skipping {filepath.name})")
-#             continue
-# 
-#         seen_job_ids.add(job_id)
-#         jobs_dict_list.append(job_data)
-
-jobs_dict_list, total_htmls, repeated_htmls = read_parse_folder(raw_dir)
-
-
-# Printing the urls processed just to check
-print("urls processed:")
-for jobs in jobs_dict_list: print(jobs['job_url'], jobs['job_title'])
-print("# of htmls processed: ", total_htmls)
-print("# of jobs saved in json: ",len(jobs_dict_list))
-print("# of repeated jobs: ", repeated_htmls)
+# Parse all the html files in raw_dir path
+jobs_dict_list = read_parse_folder(raw_dir)
 
 # Timestamp used for json and for processed time
 timestamp_process = datetime.now().strftime('%Y%m%d_%H%M%S')
