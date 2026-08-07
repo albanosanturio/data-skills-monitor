@@ -6,6 +6,15 @@ Track what technical skills employers are actually demanding in data engineering
 
 **Why?** As a data engineer re-entering the job market, I need to understand what skills are in demand, what tools companies are using, and how trends are shifting. This project automates that analysis.
 
+EDIT 07/08/2026:
+Slightly changing the scope and flow of the project.
+After toying around scraping the job-board, i realized its a subtle work itself. *cough cough* thank you cloudflare *cough cough*. So I'm backtracking a bit and ~~ wasting ~~ investing some time getting some good amount of seed data to feed this reports. I'll find a way later to ingest new data.
+
+So far for now I'll parse job offers and analyze the skills demanded for data roles.
+Also I'll be adding a python package dowloand monitor through pypi, first ingesting benchmark data through their archive data vault in BQ, but periodically ingesting fresh data through pypi api.
+
+TLDR: Live ingestion of jobs paused, pivoting to analyising current data and addition of pypi analysis.
+
 ---
 
 ## Architecture & Flow
@@ -59,7 +68,7 @@ The scraper uses Playwright to automate browser navigation and BeautifulSoup-sty
 
 Note on changes 29/07, decoupled scraping script:
 
-- `scrape_job_listings` → extracts jobs listings and saves links, saves raw JSON to `data/raw/`
+- `scrape_job_listings.py` → extracts jobs listings and saves links, saves raw JSON to `data/raw/`
 - `fetch_job_details.py` → goes through links and retrieves raw html `data/html_raw/`
 - `load_jobs_database.py` → reads HTML, validates, inserts jobs to Supabase
 

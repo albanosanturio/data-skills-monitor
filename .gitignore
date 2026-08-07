@@ -223,3 +223,10 @@ __marimo__/
 scratch/
 outputs/
 test_data/
+html_manual/
+html_manual_archive/
+html_singlefile_archive/
+input/
+job_lists.json
+state.json
+jobs_export_*
