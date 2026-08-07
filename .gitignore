@@ -230,3 +230,4 @@ input/
 job_lists.json
 state.json
 jobs_export_*
+data/
