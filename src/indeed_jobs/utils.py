@@ -66,24 +66,24 @@ def read_parse_html_file(filepath):
                 posted_date = posted_date_str
         
         # Build job_url with country if available
-        job_id = filepath.name.replace('job_', '').replace('.html', '')
+        job_source_id = filepath.name.replace('job_', '').replace('.html', '')
 
-        # Extract job_id from filename (handle both formats)
+        # Extract job_source_id from filename (handle both formats)
         filename = filepath.name.replace('.html', '')
 
 
         # Try to extract 'jk' parameter if it's a SingleFile URL-encoded filename
         jk_match = re.search(r'jk=([a-f0-9]+)', filename)
         if jk_match:
-            job_id = jk_match.group(1)
+            job_source_id = jk_match.group(1)
         else:
             # Fallback for old format (job_XXXXX)
-            job_id = filename.replace('job_', '')
+            job_source_id = filename.replace('job_', '')
 
         if country:
-            job_url = f"https://{country.lower()}.indeed.com/viewjob?jk={job_id}"
+            job_url = f"https://{country.lower()}.indeed.com/viewjob?jk={job_source_id}"
         else:
-            job_url = f"https://indeed.com/viewjob?jk={job_id}"
+            job_url = f"https://indeed.com/viewjob?jk={job_source_id}"
         
         # Parse description (unescape HTML entities)
         description_html = job_json.get('description', '')
@@ -97,7 +97,7 @@ def read_parse_html_file(filepath):
         
         job_data = {
             'source': 'indeed',
-            'job_id': job_id,
+            'job_source_id': job_source_id,
             'country': country,
             'job_title': job_json.get('title'),
             'company_name': job_json.get('hiringOrganization', {}).get('name'),
@@ -117,7 +117,7 @@ def read_parse_folder(folder_path):
 
     html_files_list = list(folder_path.glob("*.html"))
     jobs_dict_list = []  # init an empty list to store results before saving
-    seen_job_ids = set() # this set helps track duplicates
+    seen_job_sce_ids = set() # this set helps track duplicates
     duplicates = 0
     failed = 0
 
@@ -127,19 +127,19 @@ def read_parse_folder(folder_path):
 
             if not job_data:
                 failed +=1
-                logger.warning(f"Duplicate job_id: {job_id} (skipping {single_html_path.name})")
+                logger.warning(f"Duplicate job_source_id: {job_source_id} (skipping {single_html_path.name})")
                 continue
 
 
             if job_data:
-                job_id = job_data['job_id']
+                job_source_id = job_data['job_source_id']
 
                 # Skip if already seen
-                if job_id in seen_job_ids:
+                if job_source_id in seen_job_sce_ids:
                     duplicates +=1
                     continue
 
-                seen_job_ids.add(job_id)
+                seen_job_sce_ids.add(job_source_id)
                 jobs_dict_list.append(job_data)
 
         except Exception as e:
@@ -155,30 +155,58 @@ def read_parse_folder(folder_path):
 
 
 def insert_to_db(jobs_list):
+
     load_dotenv()
     db_url = os.getenv("DATABASE_URL")
-    print(f"URL: {db_url}")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL not set (check your .env)")
 
     engine = create_engine(db_url)
-    print(f" Engine created: {engine}")
+    logger.info("Engine created, connecting...")
+    print("Attempting to connect...")
 
-    try:
-        print("Attempting to connect...")
-        with engine.connect() as conn:
-            for job in jobs_list:
-                insert_sql = text("""
-                    INSERT INTO jobs (source, job_title, company_name, location, job_url, job_description, scraped_date)
-                    VALUES (:source, :job_title, :company_name, :location, :job_url, :job_description, :scraped_date)
-                    ON CONFLICT (job_url) DO NOTHING
-                """)
-                job['scraped_date'] = datetime.now().date()
-                conn.execute(insert_sql, job)
+    with engine.connect() as conn:
+        inserted = 0
+        failed = 0
 
-            conn.commit()
-            logger.info(f"Inserted {len(jobs_list)} jobs")
+        for job in jobs_list:
+            insert_sql = text("""
+                INSERT INTO jobs (
+                 source,
+                 job_source_id,
+                 country,
+                 job_title,
+                 company_name,
+                 job_url,
+                 job_description,
+                 posted_date
+                 )
 
-    except Exception as e:
-        logger.error(f"Error inserting to DB: {e}")
+                VALUES (
+                 :source,
+                 :job_source_id,
+                 :country, 
+                 :job_title, 
+                 :company_name,  
+                 :job_url, 
+                 :job_description, 
+                 :posted_date
+                 )
+                 ON CONFLICT (source, job_source_id) DO NOTHING    
+            """)
+
+            try:
+                with conn.begin():
+                    result = conn.execute(insert_sql, job)
+                    if result.rowcount:
+                        inserted += 1
+                    
+            except Exception as e:
+                failed += 1
+                logger.error(f"Failed to insert: {e}")
+
+    logger.info(f"Inserted {inserted}, Failed {failed}, Total {len(jobs_list)}")
+    
 
 def write_json_export(jobs_dict_list, timestamp):# Write to file
     json_filename = f"data/exports/jobs_export_{timestamp}.json"
@@ -210,21 +238,4 @@ def move_to_processed(folder_path, timestamp):
     print("moved ",moved," files")
     print("failed to move ",len(failed)," files")
     return None
-
-
-
-if __name__ == "__main__":
-    raw_dir = Path(raw_files_path)
-    html_files_list = list(raw_dir.glob("*.html"))
-    #db_url = os.getenv("DATABASE_URL")
-    
-    jobs_dict_list = []
-    for filepath in html_files_list:
-        job_data = read_parse_html(filepath)
-        if job_data:
-            jobs_dict_list.append(job_data)
-    insert_to_db(jobs_dict_list)
-    move_to_processed(html_files_list)
-    
-    logger.info("Pipeline complete!")
 

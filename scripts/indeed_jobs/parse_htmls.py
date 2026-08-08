@@ -12,7 +12,7 @@ from sqlalchemy import create_engine, text
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from src.indeed_jobs.utils import  insert_to_db, move_to_processed, read_parse_html_file, read_parse_folder, write_json_export
+from src.indeed_jobs.utils import  move_to_processed, read_parse_html_file, read_parse_folder, write_json_export
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
