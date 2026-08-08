@@ -46,3 +46,142 @@ CREATE TABLE job_skills (
 
 CREATE INDEX idx_job_id ON job_skills (job_id);
 CREATE INDEX idx_skill_id ON job_skills (skill_id);
+
+
+-- ============================================================================
+-- JSKILLS TABLE SEED: Data engineering / analytics skills for regex
+-- ============================================================================
+
+
+INSERT INTO skills (skill_name, category, tags) VALUES
+
+-- CORE LANGUAGES
+('Python', 'language', ARRAY['general-purpose', 'scripting']),
+('SQL', 'language', ARRAY['query-language', 'standard']),
+('Scala', 'language', ARRAY['big-data', 'functional']),
+('Java', 'language', ARRAY['big-data', 'general-purpose']),
+('R', 'language', ARRAY['statistics', 'data-analysis']),
+('Golang', 'language', ARRAY['infrastructure', 'performance']),
+('Bash', 'language', ARRAY['scripting', 'automation']),
+
+-- BIG DATA & COMPUTE
+('Spark', 'platform', ARRAY['big-data', 'distributed-computing']),
+('PySpark', 'platform', ARRAY['python', 'big-data']),
+('Hadoop', 'platform', ARRAY['big-data', 'distributed-computing']),
+('Hive', 'platform', ARRAY['sql-on-hadoop', 'big-data']),
+('Presto', 'platform', ARRAY['sql-engine', 'distributed-query']),
+('Trino', 'platform', ARRAY['sql-engine', 'distributed-query']),
+('Flink', 'platform', ARRAY['streaming', 'real-time']),
+
+-- DATA WAREHOUSING
+('Snowflake', 'platform', ARRAY['cloud-native', 'data-warehouse']),
+('BigQuery', 'platform', ARRAY['cloud-native', 'data-warehouse']),
+('Redshift', 'platform', ARRAY['aws', 'data-warehouse']),
+('Azure Synapse', 'platform', ARRAY['azure', 'data-warehouse']),
+('Databricks', 'platform', ARRAY['lakehouse', 'ai-ml']),
+('PostgreSQL', 'platform', ARRAY['relational', 'open-source']),
+('DuckDB', 'platform', ARRAY['olap', 'embedded']),
+
+-- ORCHESTRATION & ELT
+('dbt', 'orchestration', ARRAY['elt', 'testing', 'data-modeling']),
+('Airflow', 'orchestration', ARRAY['workflow-scheduling', 'orchestration']),
+('Prefect', 'orchestration', ARRAY['workflow-scheduling', 'orchestration']),
+('Dagster', 'orchestration', ARRAY['workflow-scheduling', 'data-aware']),
+('Fivetran', 'orchestration', ARRAY['elt', 'managed-service']),
+('Airbyte', 'orchestration', ARRAY['elt', 'open-source']),
+
+-- DATA LAKES & FORMATS
+('Delta Lake', 'storage', ARRAY['lakehouse', 'acid-transactions']),
+('Iceberg', 'storage', ARRAY['lakehouse', 'schema-evolution']),
+('Hudi', 'storage', ARRAY['lakehouse', 'incremental-processing']),
+('Apache Avro', 'storage', ARRAY['serialization', 'schema-evolution']),
+('Parquet', 'storage', ARRAY['columnar', 'compression']),
+
+-- STREAMING & MESSAGING
+('Kafka', 'streaming', ARRAY['event-streaming', 'messaging']),
+('RabbitMQ', 'streaming', ARRAY['messaging', 'reliability']),
+('Pub/Sub', 'streaming', ARRAY['google-cloud', 'managed-service']),
+
+-- CLOUD PLATFORMS
+('AWS', 'cloud', ARRAY['cloud-platform']),
+('GCP', 'cloud', ARRAY['cloud-platform']),
+('Azure', 'cloud', ARRAY['cloud-platform']),
+
+-- CLOUD STORAGE
+('S3', 'storage', ARRAY['aws', 'object-storage']),
+('GCS', 'storage', ARRAY['google-cloud', 'object-storage']),
+('Azure Data Lake', 'storage', ARRAY['azure', 'data-lake']),
+
+-- DATABASES
+('MySQL', 'database', ARRAY['relational', 'open-source']),
+('MongoDB', 'database', ARRAY['nosql', 'document-database']),
+('Cassandra', 'database', ARRAY['nosql', 'distributed']),
+('Elasticsearch', 'database', ARRAY['search', 'analytics']),
+('Redis', 'database', ARRAY['nosql', 'in-memory', 'caching']),
+('DynamoDB', 'database', ARRAY['nosql', 'aws']),
+
+-- BUSINESS INTELLIGENCE
+('Tableau', 'bi', ARRAY['visualization', 'enterprise']),
+('Power BI', 'bi', ARRAY['visualization', 'microsoft']),
+('Looker', 'bi', ARRAY['visualization', 'business-intelligence']),
+('Metabase', 'bi', ARRAY['visualization', 'open-source']),
+('Superset', 'bi', ARRAY['visualization', 'open-source']),
+
+-- TESTING & DATA QUALITY
+('Great Expectations', 'tool', ARRAY['testing', 'data-quality', 'validation']),
+('dbt tests', 'tool', ARRAY['testing', 'data-quality']),
+('Monte Carlo', 'tool', ARRAY['monitoring', 'data-quality']),
+
+-- DEVOPS & INFRASTRUCTURE
+('Docker', 'devops', ARRAY['containerization', 'infrastructure']),
+('Kubernetes', 'devops', ARRAY['container-orchestration', 'infrastructure']),
+('Terraform', 'devops', ARRAY['infrastructure-as-code', 'automation']),
+('Jenkins', 'devops', ARRAY['ci-cd', 'automation']),
+('GitHub Actions', 'devops', ARRAY['ci-cd', 'automation']),
+('GitLab CI', 'devops', ARRAY['ci-cd', 'automation']),
+('CircleCI', 'devops', ARRAY['ci-cd', 'automation']),
+
+-- VERSION CONTROL
+('Git', 'tool', ARRAY['version-control', 'standard']),
+('GitHub', 'tool', ARRAY['version-control', 'collaboration']),
+('GitLab', 'tool', ARRAY['version-control', 'collaboration']),
+
+-- MACHINE LEARNING & DATA SCIENCE
+('Scikit-learn', 'ml', ARRAY['machine-learning', 'python']),
+('TensorFlow', 'ml', ARRAY['deep-learning', 'machine-learning']),
+('PyTorch', 'ml', ARRAY['deep-learning', 'machine-learning']),
+('XGBoost', 'ml', ARRAY['machine-learning', 'gradient-boosting']),
+('LightGBM', 'ml', ARRAY['machine-learning', 'gradient-boosting']),
+
+-- PYTHON LIBRARIES
+('Pandas', 'tool', ARRAY['data-analysis', 'python']),
+('NumPy', 'tool', ARRAY['numerical-computing', 'python']),
+('Matplotlib', 'tool', ARRAY['visualization', 'python']),
+('Plotly', 'tool', ARRAY['visualization', 'interactive']),
+
+-- API & DATA FORMATS
+('REST', 'tool', ARRAY['api-design', 'standard']),
+('GraphQL', 'tool', ARRAY['api-design', 'modern']),
+('JSON', 'tool', ARRAY['data-format', 'standard']),
+('XML', 'tool', ARRAY['data-format', 'standard']),
+('Protocol Buffers', 'tool', ARRAY['serialization', 'google']),
+
+-- MODERN DATA STACK & ARCHITECTURE
+('Reverse ETL', 'orchestration', ARRAY['activation', 'cdp']),
+('Lakehouse', 'platform', ARRAY['architecture-pattern']),
+('Data Mesh', 'platform', ARRAY['architecture-pattern']),
+
+-- SQL ENGINES & QUERY LAYERS
+('Athena', 'platform', ARRAY['aws', 'serverless', 'sql-engine']),
+('Spark SQL', 'platform', ARRAY['sql-engine', 'distributed']),
+
+-- LEGACY TOOLS (still appearing in job postings)
+('Talend', 'orchestration', ARRAY['legacy', 'elt']),
+('Informatica', 'orchestration', ARRAY['legacy', 'elt']),
+('Oracle', 'database', ARRAY['legacy', 'relational']),
+('Teradata', 'platform', ARRAY['legacy', 'data-warehouse'])
+
+ON CONFLICT (skill_name) DO UPDATE SET
+  category = EXCLUDED.category,
+  tags = EXCLUDED.tags,
+  created_at = CURRENT_TIMESTAMP;
