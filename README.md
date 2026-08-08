@@ -8,7 +8,7 @@ Track what technical skills employers are actually demanding in data engineering
 
 EDIT 07/08/2026:
 Slightly changing the scope and flow of the project.
-After toying around scraping the job-board, i realized its a subtle work itself. *cough cough* thank you cloudflare *cough cough*. So I'm backtracking a bit and ~~ wasting ~~ investing some time getting some good amount of seed data to feed this reports. I'll find a way later to ingest new data.
+After toying around scraping the job-board, i realized its a subtle work itself. *cough cough* thank you cloudflare *cough cough*. So I'm backtracking a bit and ~~wasting~~ investing some time getting some good amount of seed data to feed this reports. I'll find a way later to ingest new data.
 
 So far for now I'll parse job offers and analyze the skills demanded for data roles.
 Also I'll be adding a python package dowloand monitor through pypi, first ingesting benchmark data through their archive data vault in BQ, but periodically ingesting fresh data through pypi api.
@@ -17,34 +17,58 @@ TLDR: Live ingestion of jobs paused, pivoting to analyising current data and add
 
 ---
 
+### Source data
+Remote data engineering/analytics roles via Indeed.com (Argentina, Chile and Uruguay)
+Job title, company, location, description, URL, posted date, scraped date.
+
 ## Architecture & Flow
 
 ```
 Data Sources (Indeed, others)
         ↓
-[Daily / Weekly] Scrape job postings
+Extract job data
         ↓
 Store raw data (PostgreSQL-Supabase)
         ↓
-Extract skills from descriptions (regex + Claude API fallback)
+Extract skills from descriptions (regex based on skill list)
         ↓
 Query analytics tables
         ↓
 Visualize in Streamlit dashboard
 ```
 
-### Component Breakdown
+## On Hold (Next Phase)
+- **Live scraping** — Cloudflare blocks headless browsers; paused for MVP
+- **dbt transformations** — Not needed yet; skill extraction is direct
+- **GitHub Actions scheduler** — Will add after POC ships
+- **PyPI package monitor** — Planned enhancement, not in MVP
+
+### Current Pipeline (Working ✅)
+- `parse_htmls.py` — Parse Indeed HTML, extract job data (title, description, company, date)
+- `load_to_db.py` — Load parsed jobs into Supabase `jobs` table
+- `skill_extract.py` — Regex-match 88 curated skills from descriptions, populate `job_skills` table
+- `Streamlit app` — Query & visualize job postings + skill demand (🚀 shipping Monday)
+
+### Data Model
+- **jobs** — Raw job postings (14 live)
+- **skills** — 88 curated skills (languages, platforms, tools, BI) with tags
+- **job_skills** — Extracted skill-job links (regex-based extraction)
+
+## Stack
 
 | Component | Purpose | Tech |
 |-----------|---------|------|
-| **Scraper** | Collect job postings | Python (BeautifulSoup, Playwright) |
+
 | **Storage** | Raw data warehouse | PostgreSQL (Supabase) |
 | **Skill Extraction** | Parse job descriptions for skills | Regex |
 | **PyPI Tracker** | Monitor package adoption | pypistats.org API |
-| **Transform** | Clean & model data | dbt |
-| **Orchestration** | Daily automation | GitHub Actions + Airflow |
 | **Dashboard** | Interactive visualizations | Streamlit |
+| **DB Client** | Warehouse connections | SQLAlchemy |
 
+on hold:
+~~| **Scraper** | Collect job postings | Python (BeautifulSoup, Playwright) |~~ on hold
+~~| **Transform** | Clean & model data | dbt |~~ on hold
+~~| **Orchestration** | Daily automation | GitHub Actions + Airflow |~~ on hold
 ---
 
 ## Dependencies
@@ -55,61 +79,25 @@ Visualize in Streamlit dashboard
 - `beautifulsoup4` — HTML parsing
 - `playwright` — Browser automation
 - `pandas` — Data manipulation
+- `streamlit` — Data visualization
 
-## Possible improvements
-- Add a LLM skill extraction (this can help include new skills)
-- Assign confidence scores to skill extraction
-- Add new job posting sources
 
-## Data Collection: Indeed Scraper Implementation
+## Status & Roadmap - last edit 08/08
 
-### Architecture
-The scraper uses Playwright to automate browser navigation and BeautifulSoup-style DOM querying to extract job data from Indeed.com listing pages.
+### Monday POC (Ship)
+- [ ] Build Streamlit app (jobs table + skills display)
+- [ ] Skill demand chart (bar chart: top 10 skills)
+- [ ] Test locally
+- [ ] Deploy to Streamlit Cloud
+- [ ] Update README with live link
 
-Note on changes 29/07, decoupled scraping script:
-
-- `scrape_job_listings.py` → extracts jobs listings and saves links, saves raw JSON to `data/raw/`
-- `fetch_job_details.py` → goes through links and retrieves raw html `data/html_raw/`
-- `load_jobs_database.py` → reads HTML, validates, inserts jobs to Supabase
-
-**Why**: Scraper failures don't corrupt DB. Raw data preserved for auditing. Schema changes don't require re-scraping.
-
-### Key Components
-- `IndeedScraper` class: Main scraper logic
-- `_scrape_page()`: Handles pagination (navigates each page URL)
-- `_parse_job()`: Extracts title and URL from each job card
-
-### Playwright Methods Used
-- `.goto()` — Navigate to Indeed page
-- `.wait_for_selector()` — Wait for jobs to load
-- `.query_selector_all()` — Find all job cards
-- `.get_attribute()` / `.text_content()` — Extract job data
-
-### Supabase connection
-- Changed to a pooler IPV4 connection, ipv6 was blocked
-
-### Anti-Scraping Considerations
-- **Headless=False**: Required (headless mode gets blocked)
-- **Rate limiting**: 10s delay between pages, 0.5s between jobs
-- **Stealth mode**: Hide automation signals from Indeed
-
-### Source
-Remote data engineering/analytics roles via Indeed.com (pagination: 16 jobs/page).
-
-### MVP Scope
-- Single country (Argentina)
-- First 80 jobs (5 pages)
-- Daily/Weekly scrape via GitHub Actions
-- Rate limit: 1 request/2 seconds
-
-### Data per Job
-Job title, company, location, description, URL, posted date, scraped date.
-Mandatory: title, description, url, scraped date. The rest can be implemented later on
-
-### Future
-Multi-country support, date filtering, additional sources.
-
-### TODO: Next Phase
-- [ ] Extract skills from descriptions via regex
-- [ ] Store skills in job_skills table
-- [ ] Streamlit webapp
+### Post-Launch Improvements
+- [ ] Skill co-occurrence analysis (which skills appear together)
+- [ ] Trend over time (skill demand by week/month)
+- [ ] Job filters (by location, company, skills)
+- [ ] Dynamic skill list from skills.json (no DB query)
+- [ ] Hybrid regex + Claude fallback for skill extraction
+- [ ] Job descriptions full-text search
+- [ ] Export jobs as CSV
+- [ ] GitHub Actions scheduler (daily scrape + extract)
+- [ ] Unit tests for regex extraction
