@@ -9,8 +9,23 @@ from dotenv import load_dotenv
 load_dotenv()
 db_url = os.getenv("DATABASE_URL")
 
-# Page config
-st.set_page_config(page_title="Tech Skills Monitor", layout="wide", initial_sidebar_state="collapsed")
+# Query: Get metadata
+@st.cache_data(ttl=3600)
+def get_metadata():
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT
+              COUNT(DISTINCT job_id) as total_jobs,
+              MAX(skill_extraction_date) as last_ingestion
+            FROM jobs
+            WHERE skill_extraction_date IS NOT NULL
+        """))
+        row = result.fetchone()
+        return {
+            'total_jobs': row[0] or 0,
+            'last_ingestion': row[1]
+        }
+    
 
 # Connect to DB
 @st.cache_resource
@@ -82,22 +97,6 @@ def get_all_tags():
         """))
         return sorted([row[0] for row in result.fetchall()])
 
-# Query: Get metadata
-@st.cache_data(ttl=3600)
-def get_metadata():
-    with engine.connect() as conn:
-        result = conn.execute(text("""
-            SELECT
-              COUNT(DISTINCT job_id) as total_jobs,
-              MAX(skill_extraction_date) as last_ingestion
-            FROM jobs
-            WHERE skill_extraction_date IS NOT NULL
-        """))
-        row = result.fetchone()
-        return {
-            'total_jobs': row[0] or 0,
-            'last_ingestion': row[1]
-        }
 
 # Query: Skills co-occurring with a selected skill
 @st.cache_data(ttl=3600)
@@ -162,22 +161,63 @@ def get_tag_cooccurrence(tags_list):
 
 # ========== LAYOUT ==========
 
-# Process banner (centered)
-col_title = st.columns([1])[0]
-st.markdown("<h1 style='text-align: center;'>📊 Tech Skills Monitor</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'><i>Track what skills employers actually demand in data roles</i></p>", unsafe_allow_html=True)
-
-
-# Process flow diagram
-process_text = "|| HTML Job Offers (Indeed)  ||  ----> || Parse html files (BeautifulSoup) || ----> || Store (Supabase) || ---->  || Extract Skills (Regex)  ||  ---->  || Data Visuals (Streamlit) ||"
-st.caption(process_text)
-
-
 # Display Metadata
 metadata = get_metadata()
 last_ingestion_str = metadata['last_ingestion'].strftime('%Y-%m-%d %H:%M') if metadata['last_ingestion'] else 'Never'
 metadata_text = f"**Data source:** Indeed.com | **Jobs ingested:** {metadata['total_jobs']} | **Last ingestion:** {last_ingestion_str}"
-st.caption(metadata_text)
+
+
+# Page config
+st.set_page_config(page_title="Tech Skills Monitor", layout="wide", initial_sidebar_state="collapsed")
+
+# Process banner (centered)
+col_title = st.columns([1])[0]
+st.markdown("<h1 style='text-align: center;'>📊 Tech Skills Monitor</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'><i>Track what skills employers actually demand in data roles</i></p>", unsafe_allow_html=True)
+st.caption(metadata_text, text_alignment="center")
+import streamlit as st
+
+
+# pipeline badges
+
+PIPELINE_SVG = f"""
+<div style="width:100%; max-width:680px; margin:0 auto; overflow-x:auto;">
+<svg width="100%" viewBox="0 0 680 150" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>Data pipeline</title>
+
+  <rect x="20" y="20" width="100" height="34" rx="17" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+  <text x="70" y="37" text-anchor="middle" dominant-baseline="central" font-size="12" fill="#04342C" font-family="sans-serif">Indeed</text>
+  <line x1="120" y1="37" x2="141" y2="37" stroke="#5DCAA5" stroke-width="1.5"/>
+  <path d="M141 32 L149 37 L141 42 Z" fill="#5DCAA5"/>
+
+  <rect x="146" y="20" width="130" height="34" rx="17" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+  <text x="211" y="37" text-anchor="middle" dominant-baseline="central" font-size="12" fill="#26215C" font-family="sans-serif">BeautifulSoup</text>
+  <line x1="276" y1="37" x2="297" y2="37" stroke="#7F77DD" stroke-width="1.5"/>
+  <path d="M297 32 L305 37 L297 42 Z" fill="#7F77DD"/>
+
+  <rect x="302" y="20" width="110" height="34" rx="17" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+  <text x="357" y="37" text-anchor="middle" dominant-baseline="central" font-size="12" fill="#4A1B0C" font-family="sans-serif">Supabase</text>
+  <line x1="412" y1="37" x2="433" y2="37" stroke="#F0997B" stroke-width="1.5"/>
+  <path d="M433 32 L441 37 L433 42 Z" fill="#F0997B"/>
+
+  <rect x="438" y="20" width="90" height="34" rx="17" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+  <text x="483" y="37" text-anchor="middle" dominant-baseline="central" font-size="12" fill="#412402" font-family="sans-serif">Regex</text>
+  <line x1="528" y1="37" x2="549" y2="37" stroke="#EF9F27" stroke-width="1.5"/>
+  <path d="M549 32 L557 37 L549 42 Z" fill="#EF9F27"/>
+
+  <rect x="554" y="20" width="106" height="34" rx="17" fill="#FBEAF0" stroke="#993556" stroke-width="0.5"/>
+  <text x="607" y="37" text-anchor="middle" dominant-baseline="central" font-size="12" fill="#4B1528" font-family="sans-serif">Streamlit</text>
+
+</svg>
+</div>
+"""
+
+st.markdown(PIPELINE_SVG, unsafe_allow_html=True)
+
+
+# Process flow diagram
+
+
 
 
 # SECTION 1: Top 10 Skills (Centered, Full Width)
