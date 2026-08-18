@@ -61,7 +61,7 @@ def build_regex_from_db(engine):
     for skill_id, skill_name in skills:
         skill_mapping[skill_name] = skill_id  # store original casing for later
         skill_mapping_lower[skill_name.lower()] = skill_name  # "r" -> "R"
-        escaped_skills.append(re.escape(skill_name))
+        escaped_skills.append(r'\b' + re.escape(skill_name) + r'\b')
 
     # Build pattern: (skill1|skill2|skill3) with case-insensitive flag
     pattern_str = '|'.join(escaped_skills)
