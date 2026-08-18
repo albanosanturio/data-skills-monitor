@@ -43,44 +43,83 @@ def build_regex_from_db(engine):
     """
     with engine.connect() as conn:
         result = conn.execute(text("""
-            SELECT skill_id, skill_name
+            SELECT skill_id, skill_name, COALESCE(variants, ARRAY[]::text[]) as variants
             FROM skills
             ORDER BY LENGTH(skill_name) DESC
         """))
-        skills = result.fetchall()
-
+        skills = result.fetchall() 
     if not skills:
         logger.error("No skills found in skills table")
         return None, {}
 
     # Build mapping and escape skill names for regex
-    skill_mapping = {}
-    skill_mapping_lower = {} 
-    escaped_skills = []
+    skill_mapping = {}              # skill_name -> skill_id
+    skill_mapping_lower = {}        # skill_name_lower -> skill_name (casing normalization)
+    escaped_skills = []             
+    variant_map = {}                # variant_lower -> canonical_skill_name
 
-    for skill_id, skill_name in skills:
+    for skill_id, skill_name, variants_array in skills:
         skill_mapping[skill_name] = skill_id  # store original casing for later
         skill_mapping_lower[skill_name.lower()] = skill_name  # "r" -> "R"
+
+        # Add word boundaries to the skill name for regex
         escaped_skills.append(r'\b' + re.escape(skill_name) + r'\b')
+
+        # Build variant map from the TEXT[] array
+        # Example: skill_name = "Power BI", variants = ["powerbi", "power-bi"]
+        # This creates: variant_map["powerbi"] = "Power BI", variant_map["power-bi"] = "Power BI"
+        if variants_array:
+            for variant in variants_array:
+                variant_map[variant.lower()] = skill_name
 
     # Build pattern: (skill1|skill2|skill3) with case-insensitive flag
     pattern_str = '|'.join(escaped_skills)
     pattern = re.compile(pattern_str, re.IGNORECASE)
 
-    logger.info(f"Built regex pattern from {len(skills)} skills in DB")
-    return pattern, skill_mapping, skill_mapping_lower
+    logger.info(f"✅ Built regex pattern from {len(skills)} skills with word boundaries")
+    logger.info(f"✅ Loaded {len(variant_map)} variant mappings from skills table")
+    
+    return pattern, skill_mapping, skill_mapping_lower, variant_map
 
+def normalize_variant(matched_text, skill_mapping_lower, variant_map):
+    """
+    Normalize skill name via two-step process:
+    
+    1. Casing normalization: "PowerBI" -> "powerbi" -> "Power BI" (from skills table)
+    2. Variant mapping: "powerbi" -> "Power BI" (from skills.variants array)
+    
+    Args:
+        matched_text: The text matched by regex (e.g., "powerbi", "GCP")
+        skill_mapping_lower: Mapping of lowercase skill names to canonical names
+        variant_map: Mapping of variant names to canonical skill names (from DB)
+        
+    Returns:
+        str: Canonical skill name
+    """
+    lower_text = matched_text.lower()
+    
+    # First check direct mapping (handles exact casing mismatches in skills table)
+    if lower_text in skill_mapping_lower:
+        return skill_mapping_lower[lower_text]
+    
+    # Then check variant map (handles alternate spellings from skills.variants)
+    if lower_text in variant_map:
+        return variant_map[lower_text]
+    
+    # Fallback: return original text (shouldn't happen if regex matched)
+    return matched_text
 
 def skill_extract_regex_json():
     """Extract skills from unprocessed jobs using regex, write results to JSON.
 
-    Reads live skills table, builds regex, extracts from unprocessed jobs.
+    Reads live skills table including variants, builds regex, extracts from unprocessed jobs.
+    Applies variant normalization to handle PowerBI/Power BI, GCP/Google Cloud Platform, etc.
 
     Returns:
         str: Path to the exported JSON file
     """
     engine = get_db_engine()
-    pattern, skill_mapping, skill_mapping_lower = build_regex_from_db(engine)
+    pattern, skill_mapping, skill_mapping_lower, variant_map = build_regex_from_db(engine)
 
     if not pattern:
         logger.error("Could not build regex pattern, aborting")
@@ -110,8 +149,11 @@ def skill_extract_regex_json():
 
         for match in matches:
             matched_text = match.group()
-            original_name = skill_mapping_lower.get(matched_text.lower(), matched_text)
-            found_skills.add(original_name)  # Add "R" not "r"
+
+            # Normalize the matched text to canonical skill name
+            # Handles both casing differences and variant spellings
+            normalized_skill = normalize_variant(matched_text, skill_mapping_lower, variant_map)
+            found_skills.add(normalized_skill)
 
         # Write each unique skill for this job to results
         for skill_name in found_skills:
