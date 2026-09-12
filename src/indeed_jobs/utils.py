@@ -13,11 +13,6 @@ from sqlalchemy import create_engine, text
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-raw_files_path = 'test_data/raw_html/'
-raw_dir = Path(raw_files_path)
-processed_files_path = 'test_data/processed_html/'
-processed_dir = Path(processed_files_path)
-
 #db connection
 #load_dotenv()
 #db_url = os.getenv("DATABASE_URL")
@@ -40,7 +35,9 @@ def read_parse_html_file(filepath):
         logger.info(f"Read: {filepath.name}")
         
         # Extract JSON-LD (more reliable than DOM parsing)
-        json_ld_match = re.search(r'<script type="application/ld\+json">({.*?})</script>', html, re.DOTALL)
+        # Attribute quotes are optional: saved pages (e.g. via SingleFile) often
+        # strip them, leaving <script type=application/ld+json> with no quotes.
+        json_ld_match = re.search(r'<script type=["\']?application/ld\+json["\']?[^>]*>({.*?})</script>', html, re.DOTALL)
         
         if not json_ld_match:
             logger.error(f"No JSON-LD found in {filepath.name}")
@@ -65,19 +62,17 @@ def read_parse_html_file(filepath):
             except:
                 posted_date = posted_date_str
         
-        # Build job_url with country if available
-        job_source_id = filepath.name.replace('job_', '').replace('.html', '')
-
         # Extract job_source_id from filename (handle both formats)
         filename = filepath.name.replace('.html', '')
 
-
-        # Try to extract 'jk' parameter if it's a SingleFile URL-encoded filename
-        jk_match = re.search(r'jk=([a-f0-9]+)', filename)
+        # Files are saved by SingleFile using the page title, not the URL, so
+        # the 'jk' job key isn't in the filename. It does appear in the saved
+        # page content itself, as the "viewjob?jk=<id>" link Indeed embeds.
+        jk_match = re.search(r'viewjob\?jk=([a-f0-9]+)', html)
         if jk_match:
             job_source_id = jk_match.group(1)
         else:
-            # Fallback for old format (job_XXXXX)
+            # Fallback for old format (job_XXXXX filename)
             job_source_id = filename.replace('job_', '')
 
         if country:
@@ -127,20 +122,18 @@ def read_parse_folder(folder_path):
 
             if not job_data:
                 failed +=1
-                logger.warning(f"Duplicate job_source_id: {job_source_id} (skipping {single_html_path.name})")
+                logger.warning(f"Failed to parse (skipping): {single_html_path.name}")
                 continue
 
+            job_source_id = job_data['job_source_id']
 
-            if job_data:
-                job_source_id = job_data['job_source_id']
+            # Skip if already seen
+            if job_source_id in seen_job_sce_ids:
+                duplicates +=1
+                continue
 
-                # Skip if already seen
-                if job_source_id in seen_job_sce_ids:
-                    duplicates +=1
-                    continue
-
-                seen_job_sce_ids.add(job_source_id)
-                jobs_dict_list.append(job_data)
+            seen_job_sce_ids.add(job_source_id)
+            jobs_dict_list.append(job_data)
 
         except Exception as e:
             failed += 1
@@ -212,7 +205,7 @@ def write_json_export(jobs_dict_list, timestamp):# Write to file
     json_filename = f"data/exports/jobs_export_{timestamp}.json"
     with open(json_filename, 'w', encoding='utf-8') as f:
         json.dump(jobs_dict_list, f, indent=2, ensure_ascii=False)
-    print(f"✅ JSON exported: {json_filename}")
+    print(f"JSON exported: {json_filename}")
 
 def move_to_processed(folder_path, timestamp):
     html_files_list = list(folder_path.glob("*.html"))

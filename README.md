@@ -49,6 +49,29 @@ Visualize in Streamlit dashboard
 - `skill_extract.py` — Regex-match 88 curated skills from descriptions, populate `job_skills` table
 - `Streamlit app` — Query & visualize job postings + skill demand (🚀 shipping Monday)
 
+#### File paths through the pipeline
+
+`data/` is gitignored and created at runtime; nothing under it is committed.
+
+```
+data/raw/*.html
+      │  (parse_htmls.py)
+      ▼
+data/exports/jobs_export_<timestamp>.json   +   data/raw/*.html moved → data/processed/<timestamp>/
+      │  (load_to_db.py)
+      ▼
+Supabase "jobs" table
+      │  (skill_extract.py, step 1: skill_extract_regex_json)
+      ▼
+data/exports/skills_export_<timestamp>.json
+      │  (skill_extract.py, step 2: skill_extract_to_db)
+      ▼
+Supabase "job_skills" table  (+ jobs.skill_extraction_date stamped)
+```
+
+- `load_to_db.py` reads from `data/exports/` — defaults to the most recent `jobs_export_*.json`, or accepts a specific path as an argument. It's deliberately decoupled from `parse_htmls.py`, so a failed/re-run DB load never needs to re-parse or re-move the source HTML.
+- `skill_extract.py` reads job rows directly from the DB (`jobs` where `skill_extraction_date IS NULL`), not from a file.
+
 ### Data Model
 - **jobs** — Raw job postings (14 live)
 - **skills** — 88 curated skills (languages, platforms, tools, BI) with tags

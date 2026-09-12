@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 # Declare file paths to use
 raw_dir = Path('data/raw/')
-processed_dir = Path('test_data/processed_html/')
 
 # Parse all the html files in raw_dir path
 jobs_dict_list = read_parse_folder(raw_dir)
